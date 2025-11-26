@@ -1,0 +1,42 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<title>Liste de Courses</title>
+	<style>
+		body { font-family: Arial, sans-serif; display: flex; }
+		.form-zone { flex: 1; padding: 2em; }
+		.liste-zone { flex: 1; padding: 2em; background: #f4f4f4; border-left: 1px solid #ccc; }
+		input[type="text"] { width: 80%; padding: 0.5em; }
+		button { padding: 0.5em 1em; }
+		h2 { margin-top: 0; }
+		ul { list-style: none; padding: 0; }
+		li { padding: 0.3em 0; }
+	</style>
+</head>
+<body>
+	<div class="form-zone">
+		<h2>Ajouter un article</h2>
+		<form method="POST" action="/">
+			<input type="text" name="article" placeholder="Nom de l'article" required />
+			<button type="submit">Ajouter</button>
+		</form>
+	</div>
+	<div class="liste-zone">
+		<h2>Liste de courses (<span>{{.Count}}</span>)</h2>
+		<ul>
+			{{range .Liste}}
+			<li style="display: flex; align-items: center;">
+				<form method="POST" action="/" style="margin:0; padding:0;">
+					<input type="hidden" name="delete_article" value="{{.}}" />
+					<input type="hidden" name="action" value="delete" />
+					<button type="submit" style="background: none; border: none; color: red; font-size: 1.2em; cursor: pointer; margin-right: 8px;">&#10060;</button>
+				</form>
+				<span>{{.}}</span>
+			</li>
+			{{end}}
+		</ul>
+	</div>
+</body>
+</html>
