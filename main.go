@@ -64,7 +64,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/", handler)
-	log.Println("Serveur Go lancé : accès sur http://<IP_DE_TA_MACHINE>:3000 depuis le réseau")
+	log.Println("Serveur Go lancé : accès sur http://127.0.0.1:3000 depuis le réseau")
 	// Écoute sur toutes les interfaces réseau, port 3000
 	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
 		log.Fatalf("Erreur lors du lancement du serveur : %v", err)
