@@ -1,0 +1,78 @@
+Points forts
+
+IDs: les items ont maintenant des ID (fiable pour edit/delete).
+Edit inline: UX d’édition intégrée sans rechargement complet (fetch POST).
+Mutex: protection concurrente sur listeCourses (évite races).
+Test e2e: mini-projet-liste/test_client.js automatise add/edit/delete et vérifie le HTML.
+Style/CSS: bouton d’édition maintenu à droite, bon comportement visuel.
+Risques / Problèmes identifiés (priorité élevée → faible)
+
+Données non persistées: la liste est en mémoire (listeCourses []Item) — perdu au redémarrage.
+Pas de CSRF: les formulaires POST n’ont aucune protection CSRF (risque si exposé).
+Validation/limitation des entrées: pas de contrôle serveur sur longueur max d’un nom d’article ni nettoyage (risque DoS, XSS si template change).
+PRG absent: POST renvoie directement la page; cela peut causer des doubles‑soumissions si l’utilisateur refresh.
+Pas de shutdown propre: serveur démarre mais pas de gestion d’arrêt/graceful shutdown.
+Scripts inline: JS embarqué dans index.html — maintenance et caching plus compliqués.
+Erreurs non exposées / logs limités: template.Execute se fait sans vérifier l’erreur renvoyée (bien que Must soit utilisé au parsing).
+Tests e2e fragiles: le test cherche du texte dans le HTML; parsing DOM (cheerio) serait plus robuste.
+Sécurité HTTP headers absents (CSP, X-Frame-Options, etc.).
+IDs monotone: nextID n’est pas persistant; si on veut IDs stables au redémarrage, il faut persistance.
+Suggestions d’améliorations (avec actions concrètes)
+
+(Priorité haute) Persister les données:
+
+Option simple: sauvegarde JSON atomique sur disque (e.g., orders.json) après chaque modification. Utiliser écriture sur fichier temporaire + rename pour atomicité.
+Option robuste: utiliser SQLite ou BoltDB pour persistance légère.
+Bénéfices: données conservées entre redémarrages, IDs persistants, tests plus fiables.
+(Haute) Protection CSRF / sécurité formulaires:
+
+Ajouter token CSRF côté serveur (ex: gorilla/csrf) ou un header/check pour les requêtes XHR POST.
+Alternativement, exposer une API JSON authentifiée (si usage interne) et limiter l’origine via CORS.
+(Haute) Validation côté serveur:
+
+Limiter longueur (max 200 chars), refuser chaînes vides, normaliser l’encodage UTF‑8.
+Échapper/sanitiser les entrées si tu passe en HTML brut quelque part (Go template échappe déjà par défaut, mais prudence si on injecte du HTML plus tard).
+(Moyenne) Pattern Post-Redirect-Get (PRG):
+
+Après un POST, rediriger vers GET (http.Redirect) pour éviter double‑soumission. Pour AJAX (fetch), tu peux renvoyer JSON et laisser le client mettre à jour l’UI.
+(Moyenne) Graceful shutdown:
+
+Utiliser http.Server avec Shutdown(ctx) pour arrêter proprement et attendre les requêtes en cours.
+(Moyenne) Séparer JS/CSS:
+
+Extraire les scripts inline vers static/app.js et le CSS vers static/style.css pour cache, testabilité et propreté.
+(Moyenne) Rendre tests e2e plus robustes:
+
+Utiliser cheerio (Node) ou un HTML parser pour vérifier la structure DOM (sélecteurs par data-id) au lieu de search text.
+Intégrer dans CI (GitHub Actions) pour lancer go run . + node test_client.js.
+(Faible) UI / accessibilité:
+
+Gérer focus lors de l’édition (retour du focus), ajouter aria-live pour toasts, confirmer suppression (confirm modal), rendre boutons plus accessibles.
+Rendre responsive (taille icônes réduite sur mobiles).
+(Faible) Headers de sécurité HTTP:
+
+Ajouter Content-Security-Policy, X-Content-Type-Options: nosniff, X-Frame-Options: DENY, etc.
+(Faible) Tests unitaires en Go:
+
+Ajouter tests pour fonctions pures ajouterArticle, supprimerArticleByID, editArticleByID dans _test.go.
+Patchs / snippets utiles
+Si tu veux que j’implémente immédiatement, je propose dans l’ordre prioritaire :
+
+Persistance JSON atomique (fichier data.json dans mini-projet-liste) — je peux ajouter fonctions loadData() et saveData() et appeler saveData() après add/edit/delete.
+PRG: après POST faire http.Redirect(w, r, "/", http.StatusSeeOther). Pour AJAX, renvoyer code 200 + JSON.
+graceful shutdown dans main() (signal handling).
+Extraire JS dans static/app.js.
+Exemple (synthétique) pour sauvegarde atomique en Go (je peux appliquer):
+
+Ajouter imports: os, encoding/json, io/ioutil
+Implémenter:
+func saveData(path string, data []Item) error { tmp := path + ".tmp"; b, _ := json.MarshalIndent(data, "", " "); if err := ioutil.WriteFile(tmp, b, 0644); err != nil { return err }; return os.Rename(tmp, path) }
+func loadData(path string) ([]Item, error) { ... }
+Appeler saveData("data.json", listeCourses) sous mutex après chaque mutation.
+Je peux appliquer ces changements (par étapes). Que souhaites‑tu que je fasse en premier ?
+
+A: Implémenter la persistance JSON atomique (recommandé)
+B: Ajouter PRG + meilleure réponse AJAX (ou test client adaptatif)
+C: Ajouter graceful shutdown dans main.go
+D: Extraire JS dans static/app.js et adapter template
+ou donne une combinaison / ordre particulier que tu préfères.
