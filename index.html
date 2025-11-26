@@ -13,6 +13,12 @@
 		h2 { margin-top: 0; }
 		ul { list-style: none; padding: 0; }
 		li { padding: 0.3em 0; }
+
+		/* Layout for list items: ensure edit button is right-aligned */
+		.liste-zone li { display: flex; align-items: center; gap: 8px; }
+		.liste-zone .item-text { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.liste-zone .edit-btn { margin-left: auto; background: none; border: none; color: #0066cc; font-size: 1.1em; cursor: pointer; }
+		.liste-zone form { margin: 0; padding: 0; }
 	</style>
 </head>
 <body>
@@ -26,14 +32,93 @@
 	<div class="liste-zone">
 		<h2>Liste de courses (<span>{{.Count}}</span>)</h2>
 		<ul>
+		<script>
+		// Inline edit for list items
+		function createElem(tag, props = {}, children = []) {
+			const el = document.createElement(tag);
+			Object.entries(props).forEach(([k, v]) => { if (k === 'class') el.className = v; else if (k === 'style') el.style.cssText = v; else el.setAttribute(k, v); });
+			children.forEach(c => el.append(typeof c === 'string' ? document.createTextNode(c) : c));
+			return el;
+		}
+
+		document.addEventListener('click', function (e) {
+			if (!e.target.classList.contains('edit-btn')) return;
+			const btn = e.target;
+			const li = btn.closest('li');
+			if (!li) return;
+			const textSpan = li.querySelector('.item-text');
+			const oldVal = textSpan ? textSpan.textContent.trim() : '';
+			// hide delete form/button while editing
+			const delForm = li.querySelector('form');
+			if (delForm) delForm.style.display = 'none';
+			btn.style.display = 'none';
+
+			const input = createElem('input', { type: 'text', value: oldVal, style: 'flex:1; padding:0.3em; margin-left:6px;' });
+			const saveBtn = createElem('button', { type: 'button', style: 'margin-left:8px; padding:0.3em 0.6em;' }, ['Sauver']);
+			const cancelBtn = createElem('button', { type: 'button', style: 'margin-left:6px; padding:0.3em;' }, ['Annuler']);
+
+			textSpan.style.display = 'none';
+			li.appendChild(input);
+			li.appendChild(saveBtn);
+			li.appendChild(cancelBtn);
+			input.focus();
+
+			function cleanUp(success, newVal) {
+				if (delForm) delForm.style.display = '';
+				btn.style.display = '';
+				if (success && newVal !== undefined) {
+					textSpan.textContent = newVal;
+				}
+				textSpan.style.display = '';
+				input.remove(); saveBtn.remove(); cancelBtn.remove();
+			}
+
+			saveBtn.addEventListener('click', function () {
+				const newVal = input.value.trim();
+				if (!newVal) { alert('Le nom de l\'article ne peut pas être vide'); input.focus(); return; }
+				if (newVal === oldVal) { cleanUp(true, oldVal); return; }
+
+				const data = new URLSearchParams();
+				data.append('action', 'edit');
+				data.append('old_article', oldVal);
+				// prefer using ID when available
+				const id = btn.getAttribute('data-id');
+				if (id) data.append('id', id);
+				data.append('new_article', newVal);
+
+				fetch(window.location.pathname || '/', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+					body: data.toString()
+				}).then(resp => {
+					if (resp.ok) {
+						cleanUp(true, newVal);
+					} else {
+						resp.text().then(t => alert('Erreur serveur: ' + t));
+						cleanUp(false);
+					}
+				}).catch(err => { alert('Erreur réseau: ' + err.message); cleanUp(false); });
+			});
+
+			cancelBtn.addEventListener('click', function () { cleanUp(false); });
+
+			input.addEventListener('keydown', function (ev) {
+				if (ev.key === 'Enter') { ev.preventDefault(); saveBtn.click(); }
+				if (ev.key === 'Escape') { ev.preventDefault(); cancelBtn.click(); }
+			});
+
+		});
+		</script>
 			{{range .Liste}}
 			<li style="display: flex; align-items: center;">
 				<form method="POST" action="/" style="margin:0; padding:0;">
-					<input type="hidden" name="delete_article" value="{{.}}" />
+					<input type="hidden" name="delete_article" value="{{.Name}}" />
+					<input type="hidden" name="delete_id" value="{{.ID}}" />
 					<input type="hidden" name="action" value="delete" />
-					<button type="submit" style="background: none; border: none; color: red; font-size: 1.2em; cursor: pointer; margin-right: 8px;">&#10060;</button>
+					<button type="submit" style="background: none; border: none; color: red; font-size: 1.2em; cursor: pointer;">&#10060;</button>
 				</form>
-				<span>{{.}}</span>
+				<span class="item-text">{{.Name}}</span>
+				<button class="edit-btn" data-id="{{.ID}}" data-name="{{.Name}}" aria-label="Modifier" title="Modifier">✎</button>
 			</li>
 			{{end}}
 		</ul>
