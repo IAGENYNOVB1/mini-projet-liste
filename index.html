@@ -17,8 +17,10 @@
 		/* Layout for list items: ensure edit button is right-aligned */
 		.liste-zone li { display: flex; align-items: center; gap: 8px; }
 		.liste-zone .item-text { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-		.liste-zone .edit-btn { margin-left: auto; background: none; border: none; color: #0066cc; font-size: 1.1em; cursor: pointer; }
+		.liste-zone .edit-btn { background: none; border: none; color: #0066cc; font-size: 1.1em; cursor: pointer; }
+		.liste-zone .delete-btn { background: none; border: none; color: red; font-size: 1.2em; cursor: pointer; }
 		.liste-zone form { margin: 0; padding: 0; }
+		.liste-zone .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 	</style>
 </head>
 <body>
@@ -111,14 +113,16 @@
 		</script>
 			{{range .Liste}}
 			<li style="display: flex; align-items: center;">
-				<form method="POST" action="/" style="margin:0; padding:0;">
-					<input type="hidden" name="delete_article" value="{{.Name}}" />
-					<input type="hidden" name="delete_id" value="{{.ID}}" />
-					<input type="hidden" name="action" value="delete" />
-					<button type="submit" style="background: none; border: none; color: red; font-size: 1.2em; cursor: pointer;">&#10060;</button>
-				</form>
 				<span class="item-text">{{.Name}}</span>
-				<button class="edit-btn" data-id="{{.ID}}" data-name="{{.Name}}" aria-label="Modifier" title="Modifier">✎</button>
+				<div class="actions">
+					<button class="edit-btn" data-id="{{.ID}}" data-name="{{.Name}}" aria-label="Modifier" title="Modifier">✎</button>
+					<form method="POST" action="/" class="delete-form" style="margin:0; padding:0;">
+						<input type="hidden" name="delete_article" value="{{.Name}}" />
+						<input type="hidden" name="delete_id" value="{{.ID}}" />
+						<input type="hidden" name="action" value="delete" />
+						<button type="submit" class="delete-btn" aria-label="Supprimer" title="Supprimer">&#10060;</button>
+					</form>
+				</div>
 			</li>
 			{{end}}
 		</ul>
